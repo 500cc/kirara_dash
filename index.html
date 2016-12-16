@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>まんがタイムきらら Dash Button</title>
+	<script type="text/javascript" src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+	<script type="text/javascript" src="./js/jquery.xdomainajax.js"></script>
+</head>
+<body>
+	<h1>まんがタイムきらら Dash Button(仮)</h1>
+	<h2>使い方</h2>
+	<h3>ボタン部分を押すとランダムでKRコミックスのamazonページに飛んでいきます<br>
+		ハッキリ言って実用性は皆無なので運試しなどにどうぞ<br>
+	時々アニメの公式ガイドブックとかにも飛んだり、移動先のページがなかったりしますがそれは仕様です。(強い断定)</h3>
+	<img src="./img/kirara_dash.jpg" usemap="#Map">
+	<map name="Map">
+		<area shape="circle" coords="790,300,140" onclick = "tsuyoku_osu();" alt="強く押忍">
+	</map>
+	<h4>バグ報告とかはこちら☞<a href="https://twitter.com/JP3LHW">@JP3LHW</a></h4>
+	<script type=text/javascript>
+	function tsuyoku_osu() {
+	var input = "a";
+	var sugee;
+	$(function() {
+		$.when($.ajax({
+			url: 'http://www.dokidokivisual.com/comics/',
+			type: 'GET',
+			success: function(data) {
+				input = data.responseText;
+				var konnichiha = input.lastIndexOf("book/index.php?cid=");
+				var yabee = input.indexOf ("\"",konnichiha);
+				sugee = input.substring(konnichiha+19,yabee);
+				sugee = Math.floor( Math.random() * sugee ) + 1;
+			}
+		})).done(function (result) {
+			$.ajax({
+				url: 'http://www.dokidokivisual.com/comics/book/index.php?cid='+sugee ,
+				type: 'GET',
+				success: function(data) {
+					input = data.responseText;
+					var konnichiha = input.indexOf("ISBN:");
+					var yabee = input.indexOf ("<",konnichiha);
+					sugee = input.substring(konnichiha+5,yabee);
+					var tuxee = sugee.replace(/-/g,"");
+					if (tuxee.length == 13){
+						tuxee = tuxee.substr(3);
+						tuxee = tuxee.substr(0,tuxee.length-1);
+						var majide = 0;
+						for (var i = 0; i < 9; i++) {
+							majide +=tuxee.charAt(i)*(10-i);
+						};
+						majide = majide % 11;
+
+						majide = 11 - majide;
+						if (majide == 11) {
+							majide = 0;
+						}else if (majide == 10) {
+							majide = "X";
+						}
+						tuxee = tuxee+""+majide;
+					}
+					location.href = "https://www.amazon.co.jp/dp/"+tuxee+"/"
+				}
+			})
+
+		}
+		)
+
+
+	});
+}
+	</script>
+</body>
+</html>
