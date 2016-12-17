@@ -4,69 +4,99 @@
 	<meta charset="UTF-8">
 	<title>まんがタイムきらら Dash Button</title>
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+	<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css' />
+	<script src='https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js'></script>
 	<script type="text/javascript" src="./js/jquery.xdomainajax.js"></script>
 </head>
 <body>
 	<h1>まんがタイムきらら Dash Button(仮)</h1>
 	<h2>使い方</h2>
-	<h3>ボタン部分を押すとランダムでKRコミックスのamazonページに飛んでいきます<br>
+	<h3>ボタン部分を押すとランダムでKRコミックスのamazonページを開きます<br>
 		ハッキリ言って実用性は皆無なので運試しなどにどうぞ<br>
-	時々アニメの公式ガイドブックとかにも飛んだり、移動先のページがなかったりしますがそれは仕様です。(強い断定)</h3>
+	時々アニメの公式ガイドブックとかも開いたり、開いた先のページがなかったりしますがそれは仕様です。(強い断定)</h3>
 	<img src="./img/kirara_dash.jpg" usemap="#Map">
 	<map name="Map">
 		<area shape="circle" coords="790,300,140" onclick = "tsuyoku_osu();" alt="強く押忍">
 	</map>
 	<h4>バグ報告とかはこちら☞<a href="https://twitter.com/JP3LHW">@JP3LHW</a></h4>
 	<script type=text/javascript>
-	function tsuyoku_osu() {
-	var input = "a";
-	var sugee;
+	// 初心者並みの解説
+	function tsuyoku_osu() {// ボタンが押されたときに動くやつ
+		var cid; //きららwebでの書籍管理id
+		var asin_id; //amazonでの商品管理id
+		toastr.info("ちょっと待ってね");
+
 	$(function() {
 		$.when($.ajax({
+			 //新刊の情報をwebページから入手
 			url: 'http://www.dokidokivisual.com/comics/',
 			type: 'GET',
+
 			success: function(data) {
-				input = data.responseText;
-				var konnichiha = input.lastIndexOf("book/index.php?cid=");
-				var yabee = input.indexOf ("\"",konnichiha);
-				sugee = input.substring(konnichiha+19,yabee);
-				sugee = Math.floor( Math.random() * sugee ) + 1;
+				var input_comics = data.responseText; //新刊情報のページのテキストデータ
+				//一番最後に出てくる(=最新)本のidを探す
+				var first_id = input_comics.lastIndexOf("book/index.php?cid=");
+				var last_id = input_comics.indexOf ("\"",first_id);
+				cid = input_comics.substring(first_id+19,last_id);
+				// 最新の本のidを最大値としてそこからランダムな値を出力
+				cid = Math.floor( Math.random() * cid ) + 1;
 			}
-		})).done(function (result) {
+
+		})).done(function () {
 			$.ajax({
-				url: 'http://www.dokidokivisual.com/comics/book/index.php?cid='+sugee ,
+				// ランダムな書籍id(さっき上で出力した)をurlに加えて書籍ページの情報を入手
+				url: 'http://www.dokidokivisual.com/comics/book/index.php?cid='+cid ,
 				type: 'GET',
+				// 書籍ページからISBN(本のid)を入手
 				success: function(data) {
-					input = data.responseText;
-					var konnichiha = input.indexOf("ISBN:");
-					var yabee = input.indexOf ("<",konnichiha);
-					sugee = input.substring(konnichiha+5,yabee);
-					var tuxee = sugee.replace(/-/g,"");
-					if (tuxee.length == 13){
-						tuxee = tuxee.substr(3);
-						tuxee = tuxee.substr(0,tuxee.length-1);
-						var majide = 0;
+					var input_detail = data.responseText; //書籍ページのテキストデータ
+					//ISBNを検索
+					var first_isbn = input_detail.indexOf("ISBN:");
+					var last_isbn = input_detail.indexOf ("<",first_isbn);
+					var isbn_id = input_detail.substring(first_isbn+5,last_isbn);
+					// ISBNデータからASIN(amazonの商品管理id)に変換
+					asin_id = isbn_id.replace(/-/g,"");
+					// ISBNには新規格と旧規格があり、桁数が違うので新規格の13桁の場合の処理
+					if (asin_id.length == 13){
+						asin_id = asin_id.substr(3);
+						asin_id = asin_id.substr(0,asin_id.length-1);
+						var asin_checkdigit = 0;
 						for (var i = 0; i < 9; i++) {
-							majide +=tuxee.charAt(i)*(10-i);
+							asin_checkdigit +=asin_id.charAt(i)*(10-i);
 						};
-						majide = majide % 11;
-
-						majide = 11 - majide;
-						if (majide == 11) {
-							majide = 0;
-						}else if (majide == 10) {
-							majide = "X";
+						asin_checkdigit = asin_checkdigit % 11;
+						asin_checkdigit = 11 - asin_checkdigit;
+						if (asin_checkdigit == 11) {
+							asin_checkdigit = 0;
+						}else if (asin_checkdigit == 10) {
+							asin_checkdigit = "X";
 						}
-						tuxee = tuxee+""+majide;
+						asin_id = asin_id+""+asin_checkdigit;
 					}
-					location.href = "https://www.amazon.co.jp/dp/"+tuxee+"/"
+					// 旧規格の10桁の場合はASINと同じなので処理はなし
 				}
-			})
 
+			}).done(function () {
+				// 生成したページが存在するか確認
+			$.ajax({
+					url: 'https://www.amazon.co.jp/dp/'+asin_id+'/' ,
+					type: 'GET',
+
+					error: function() {
+						// なかった場合もう一度最初から行う
+						tsuyoku_osu();
+					},
+
+					success:function () {
+						// あった場合そのページを開く
+						var childWindow = window.open('about:blank');
+						childWindow.location.href = 'https://www.amazon.co.jp/dp/'+asin_id+'/';
+						childWindow = null;
+					}
+				})
+			})
 		}
 		)
-
-
 	});
 }
 	</script>
